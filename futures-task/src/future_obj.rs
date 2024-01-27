@@ -14,7 +14,7 @@ use core::{
 /// take `dyn Trait` by value and `Box<dyn Trait>` is not available in no_std
 /// contexts.
 pub struct LocalFutureObj<'a, T> {
-    future: *mut (dyn Future<Output = T> + 'static),
+    future: *mut (dyn Future<Output = T> + 'static), //future所指向区域的指针
     drop_fn: unsafe fn(*mut (dyn Future<Output = T> + 'static)),
     _marker: PhantomData<&'a ()>,
 }
@@ -43,8 +43,8 @@ impl<'a, T> LocalFutureObj<'a, T> {
     #[inline]
     pub fn new<F: UnsafeFutureObj<'a, T> + 'a>(f: F) -> Self {
         Self {
-            future: unsafe { remove_future_lifetime(f.into_raw()) },
-            drop_fn: unsafe { remove_drop_lifetime(F::drop) },
+            future: unsafe { remove_future_lifetime(f.into_raw()) }, //确保future在运行的时候没有任何可以变更的reference
+            drop_fn: unsafe { remove_drop_lifetime(F::drop) }, 
             _marker: PhantomData,
         }
     }

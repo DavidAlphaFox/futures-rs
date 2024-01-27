@@ -173,9 +173,9 @@ impl Clone for ThreadPool {
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
-        if self.state.cnt.fetch_sub(1, Ordering::Relaxed) == 1 {
+        if self.state.cnt.fetch_sub(1, Ordering::Relaxed) == 1 { //如果此时，引用计数变为1了
             for _ in 0..self.state.size {
-                self.state.send(Message::Close);
+                self.state.send(Message::Close); //关闭所有的state
             }
         }
     }
@@ -187,7 +187,7 @@ impl ThreadPoolBuilder {
     /// See the other methods on this type for details on the defaults.
     pub fn new() -> Self {
         Self {
-            pool_size: cmp::max(1, num_cpus::get()),
+            pool_size: cmp::max(1, num_cpus::get()), //保证最少有一个线程在线程池内,默认是CPU的数量
             stack_size: 0,
             name_prefix: None,
             after_start: None,
@@ -263,7 +263,7 @@ impl ThreadPoolBuilder {
 
     /// Create a [`ThreadPool`](ThreadPool) with the given configuration.
     pub fn create(&mut self) -> Result<ThreadPool, io::Error> {
-        let (tx, rx) = mpsc::channel();
+        let (tx, rx) = mpsc::channel(); //创建异步通道
         let pool = ThreadPool {
             state: Arc::new(PoolState {
                 tx: Mutex::new(tx),
