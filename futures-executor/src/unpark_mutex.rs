@@ -9,10 +9,10 @@ use std::sync::atomic::Ordering::SeqCst;
 /// once after each `unpark` (unless the future has completed).
 pub(crate) struct UnparkMutex<D> {
     // The state of task execution (state machine described below)
-    status: AtomicUsize,
+    status: AtomicUsize, //任务状态
 
     // The actual task data, accessible only in the POLLING state
-    inner: UnsafeCell<Option<D>>,
+    inner: UnsafeCell<Option<D>>, //任务数据
 }
 
 // `UnparkMutex<D>` functions in many ways like a `Mutex<D>`, except that on
@@ -108,15 +108,15 @@ impl<D> UnparkMutex<D> {
     /// Callable only from the `POLLING`/`REPOLL` states, i.e. between
     /// successful calls to `notify` and `wait`/`complete`.
     pub(crate) unsafe fn wait(&self, data: D) -> Result<(), D> {
-        unsafe { *self.inner.get() = Some(data) }
+        unsafe { *self.inner.get() = Some(data) } //将新的任务数据更新到自己的存储
 
         match self.status.compare_exchange(POLLING, WAITING, SeqCst, SeqCst) {
             // no unparks came in while we were running
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(()), //更新状态为WAITING
 
             // guaranteed to be in REPOLL state; just clobber the
             // state and run again.
-            Err(status) => {
+            Err(status) => { //如果有人通知我们继续执行
                 assert_eq!(status, REPOLL);
                 self.status.store(POLLING, SeqCst);
                 Err(unsafe { (*self.inner.get()).take().unwrap() })
@@ -132,6 +132,6 @@ impl<D> UnparkMutex<D> {
     /// Callable only from the `POLLING`/`REPOLL` states, i.e. between
     /// successful calls to `notify` and `wait`/`complete`.
     pub(crate) unsafe fn complete(&self) {
-        self.status.store(COMPLETE, SeqCst);
+        self.status.store(COMPLETE, SeqCst); 
     }
 }

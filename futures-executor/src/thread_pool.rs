@@ -152,7 +152,7 @@ impl PoolState {
             after_start(idx);
         }
         loop {
-            let msg = self.rx.lock().unwrap().recv().unwrap();
+            let msg = self.rx.lock().unwrap().recv().unwrap(); //得到新的任务
             match msg {
                 Message::Run(task) => task.run(),
                 Message::Close => break,
@@ -284,7 +284,7 @@ impl ThreadPoolBuilder {
             if self.stack_size > 0 {
                 thread_builder = thread_builder.stack_size(self.stack_size);
             }
-            thread_builder.spawn(move || state.work(counter, after_start, before_stop))?;
+            thread_builder.spawn(move || state.work(counter, after_start, before_stop))?; //构建线程池
         }
         Ok(pool)
     }
@@ -319,21 +319,21 @@ impl Task {
         // Safety: The ownership of this `Task` object is evidence that
         // we are in the `POLLING`/`REPOLL` state for the mutex.
         unsafe {
-            wake_handle.mutex.start_poll();
+            wake_handle.mutex.start_poll(); //更新状态为POLLING
 
             loop {
-                let res = future.poll_unpin(&mut cx);
+                let res = future.poll_unpin(&mut cx); //对future进行poll
                 match res {
-                    Poll::Pending => {}
-                    Poll::Ready(()) => return wake_handle.mutex.complete(),
+                    Poll::Pending => {} //不更新任何状态
+                    Poll::Ready(()) => return wake_handle.mutex.complete(),//更新状态为COMPLETE，并立刻打断循环
                 }
-                let task = Self { future, wake_handle: wake_handle.clone(), exec };
+                let task = Self { future, wake_handle: wake_handle.clone(), exec }; //构建一个新的Task
                 match wake_handle.mutex.wait(task) {
                     Ok(()) => return, // we've waited
                     Err(task) => {
                         // someone's notified us
-                        future = task.future;
-                        exec = task.exec;
+                        future = task.future; //更新任务
+                        exec = task.exec; //更新调度器
                     }
                 }
             }
@@ -350,7 +350,7 @@ impl fmt::Debug for Task {
 impl ArcWake for WakeHandle {
     fn wake_by_ref(arc_self: &Arc<Self>) {
         if let Ok(task) = arc_self.mutex.notify() {
-            arc_self.exec.state.send(Message::Run(task))
+            arc_self.exec.state.send(Message::Run(task)) //通过信道把任务重新发给任务池
         }
     }
 }

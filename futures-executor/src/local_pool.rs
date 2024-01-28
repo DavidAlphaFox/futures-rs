@@ -63,14 +63,14 @@ thread_local! {
 impl ArcWake for ThreadNotify {
     fn wake_by_ref(arc_self: &Arc<Self>) {
         // Make sure the wakeup is remembered until the next `park()`.
-        let unparked = arc_self.unparked.swap(true, Ordering::Release);
+        let unparked = arc_self.unparked.swap(true, Ordering::Release); //唤醒
         if !unparked {
             // If the thread has not been unparked yet, it must be done
             // now. If it was actually parked, it will run again,
             // otherwise the token made available by `unpark`
             // may be consumed before reaching `park()`, but `unparked`
             // ensures it is not forgotten.
-            arc_self.thread.unpark();
+            arc_self.thread.unpark(); //当线程处在休眠的时候，立刻进行唤醒
         }
     }
 }
@@ -84,7 +84,7 @@ fn run_executor<T, F: FnMut(&mut Context<'_>) -> Poll<T>>(mut f: F) -> T {
     );
 
     CURRENT_THREAD_NOTIFY.with(|thread_notify| {
-        let waker = waker_ref(thread_notify);
+        let waker = waker_ref(thread_notify); //Arc<ThreadNotify>的reference
         let mut cx = Context::from_waker(&waker);
         loop {
             if let Poll::Ready(t) = f(&mut cx) {
